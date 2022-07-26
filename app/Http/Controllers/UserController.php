@@ -7,6 +7,7 @@ use App\Http\Requests\UserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -33,15 +34,57 @@ class UserController extends Controller
         $user = new User();
         $user->name = $request->input('name');
         $user->email = $request->input('email');
-        $user->password = $request->input('password');
+        $user->password = Hash::make( $request->input('password'));
         $user->age = $request->input('age');
         $user->status = $request->input('status');
 
         //dd($user);
         $user->save();
 
-        return new UserResource($user);
+        $token = $user->createToken($user->name);
+        $object = $token->accessToken;
 
+        return response()->json([
+            'user' => new UserResource($user),
+            'Access Token' => $object
+        ]);
+
+    }
+
+    public function login(Request $request){
+        //$user = new User();
+
+        // $user->email = $request->input('email');
+        // $user->password = $request->input('password');
+
+        //login credentials for accessing the account
+        $loginCredentials = 
+        [
+            'email' => $request->email,
+            'password' => $request->password
+        ];
+
+        //if a users tries logging in, check their details if it matches with the 
+        //one in the database then create a token for them
+        if(auth()->attempt($loginCredentials)){
+            //saving the authenticated user in the varable user
+            $user = auth()->user();
+            $token = auth()->user()->createToken($user->name);
+
+            return response()->json([
+                'user' => new UserResource($user),
+                'token' => $token->accessToken,
+            ]);
+
+
+        }else{
+            return response()->json([
+                'message' => "Invalid Credentials"
+            ]);
+        }
+
+
+        
     }
 
     /**
